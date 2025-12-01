@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<ruleset name="Yoummday">
+    <description>Coding standard for Yoummday refactoring task</description>
+    
+    <file>src</file>
+    <file>Test</file>
+    
+    <exclude-pattern>vendor/*</exclude-pattern>
+    
+    <rule ref="PSR12"/>
+</ruleset>
+
