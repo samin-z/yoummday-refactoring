@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Test\Handler;
 
 use App\Handler\PermissionHandler;
+use App\Provider\TokenDataProvider;
 use PHPUnit\Framework\TestCase;
 use ProgPhil1337\SimpleReactApp\HTTP\Response\JSONResponse;
 use ProgPhil1337\SimpleReactApp\HTTP\Routing\RouteParameters;
@@ -17,29 +18,116 @@ class PermissionHandlerTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->handler = new PermissionHandler();
+        $tokenDataProvider = new TokenDataProvider();
+        $this->handler = new PermissionHandler($tokenDataProvider);
         $this->serverRequest = $this->createMock(ServerRequestInterface::class);
     }
-    
+
     public function testTokenWithReadPermissionReturnsTrue(): void
     {
-        // TODO: Implement test for token1234 (read permission)
+        $parameters = $this->createMock(RouteParameters::class);
+        $parameters->method('get')
+            ->with('token')
+            ->willReturn('token1234');
+
+        $this->serverRequest->method('getQueryParams')
+            ->willReturn([]);
+
+        $response = $this->handler->__invoke($this->serverRequest, $parameters);
+
+        $this->assertInstanceOf(JSONResponse::class, $response);
+        $content = json_decode($response->getContent(), true);
+        $this->assertSame(['permission' => true], $content);
+        $this->assertSame(200, $response->getCode());
     }
 
     public function testTokenReadonlyWithReadPermissionReturnsTrue(): void
     {
-        // TODO: Implement test for tokenReadonly (read permission)
+        $parameters = $this->createMock(RouteParameters::class);
+        $parameters->method('get')
+            ->with('token')
+            ->willReturn('tokenReadonly');
+
+        $this->serverRequest->method('getQueryParams')
+            ->willReturn([]);
+
+        $response = $this->handler->__invoke($this->serverRequest, $parameters);
+
+        $this->assertInstanceOf(JSONResponse::class, $response);
+        $content = json_decode($response->getContent(), true);
+        $this->assertSame(['permission' => true], $content);
+        $this->assertSame(200, $response->getCode());
     }
 
+    public function testTokenWithWritePermissionReturnsTrue(): void
+    {
+        $parameters = $this->createMock(RouteParameters::class);
+        $parameters->method('get')
+            ->with('token')
+            ->willReturn('token1234');
+
+        $this->serverRequest->method('getQueryParams')
+            ->willReturn(['permission' => 'write']);
+
+        $response = $this->handler->__invoke($this->serverRequest, $parameters);
+
+        $this->assertInstanceOf(JSONResponse::class, $response);
+        $content = json_decode($response->getContent(), true);
+        $this->assertSame(['permission' => true], $content);
+        $this->assertSame(200, $response->getCode());
+    }
+
+    public function testTokenReadonlyWithWritePermissionReturnsFalse(): void
+    {
+        $parameters = $this->createMock(RouteParameters::class);
+        $parameters->method('get')
+            ->with('token')
+            ->willReturn('tokenReadonly');
+
+        $this->serverRequest->method('getQueryParams')
+            ->willReturn(['permission' => 'write']);
+
+        $response = $this->handler->__invoke($this->serverRequest, $parameters);
+
+        $this->assertInstanceOf(JSONResponse::class, $response);
+        $content = json_decode($response->getContent(), true);
+        $this->assertSame(['permission' => false], $content);
+        $this->assertSame(200, $response->getCode());
+    }
 
     public function testInvalidTokenReturnsFalse(): void
     {
-        // TODO: Implement test for invalid (non-exsistent)token
+        $parameters = $this->createMock(RouteParameters::class);
+        $parameters->method('get')
+            ->with('token')
+            ->willReturn('invalidToken');
+
+        $this->serverRequest->method('getQueryParams')
+            ->willReturn([]);
+
+        $response = $this->handler->__invoke($this->serverRequest, $parameters);
+
+        $this->assertInstanceOf(JSONResponse::class, $response);
+        $content = json_decode($response->getContent(), true);
+        $this->assertSame(['permission' => false, 'error' => 'Token not found'], $content);
+        $this->assertSame(404, $response->getCode());
     }
 
-   
     public function testMissingTokenParameterReturnsFalse(): void
     {
-        // TODO: Implement test for missing token
+        $parameters = $this->createMock(RouteParameters::class);
+        $parameters->method('get')
+            ->with('token')
+            ->willReturn('');
+
+        $this->serverRequest->method('getQueryParams')
+            ->willReturn([]);
+
+        $response = $this->handler->__invoke($this->serverRequest, $parameters);
+
+        $this->assertInstanceOf(JSONResponse::class, $response);
+        $content = json_decode($response->getContent(), true);
+        $this->assertSame(['error' => 'Token parameter is required'], $content);
+        $this->assertSame(400, $response->getCode());
     }
 }
