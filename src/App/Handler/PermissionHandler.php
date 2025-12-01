@@ -14,47 +14,69 @@ use ProgPhil1337\SimpleReactApp\HTTP\Routing\RouteParameters;
 use Psr\Http\Message\ServerRequestInterface;
 
 #[Route(httpMethod: HttpMethod::GET, uri: '/has_permission/{token}')]
-class PermissionHandler implements HandlerInterface
+final class PermissionHandler implements HandlerInterface
 {
-    /**
-     * Dependency Injection would be available here
-     */
-    public function __construct()
-    {
+    private const DEFAULT_PERMISSION = 'read';
+    private const HTTP_OK = 200;
+    private const HTTP_BAD_REQUEST = 400;
+    private const HTTP_NOT_FOUND = 404;
 
+    public function __construct(
+        private readonly TokenDataProvider $tokenDataProvider
+    ) {
     }
 
     public function __invoke(ServerRequestInterface $serverRequest, RouteParameters $parameters): ResponseInterface
     {
-        $np = "read";
+        $tokenId = $parameters->get('token');
 
-        $tId = $parameters->get("token", "kein_token");
-
-        if ($tId != "kein_token") {
-            $dataProvider = new TokenDataProvider();
-
-            $tokens = $dataProvider->getTokens();
-            $token = null;
-
-            foreach ($tokens as $t) {
-                if ($t["token"] == $tId) {
-                    $token = $t;
-                }
-            }
-
-            foreach ($token["permissions"] as $p) {
-                if ($p == $np) {
-                    $a = $a + 1;
-                }
-            }
-
-            if ($a > 0) {
-                return new JSONResponse(array("permission" => true), 400);
-            } else {
-                return new JSONResponse(array('permission' => false), 400);
-            }
-        } else {
-            return new JSONResponse(array("permission" => false), 400);
+        if (empty($tokenId)) {
+            return new JSONResponse(
+                ['error' => 'Token parameter is required'],
+                self::HTTP_BAD_REQUEST
+            );
         }
+
+        $permission = $this->getPermissionFromQuery($serverRequest);
+
+        $token = $this->findTokenById($tokenId);
+
+        if ($token === null) {
+            return new JSONResponse(
+                ['permission' => false, 'error' => 'Token not found'],
+                self::HTTP_NOT_FOUND
+            );
+        }
+
+        $hasPermission = $this->checkPermission($token, $permission);
+
+        return new JSONResponse(
+            ['permission' => $hasPermission],
+            self::HTTP_OK
+        );
+    }
+
+    private function getPermissionFromQuery(ServerRequestInterface $serverRequest): string
+    {
+        $queryParams = $serverRequest->getQueryParams();
+        return $queryParams['permission'] ?? self::DEFAULT_PERMISSION;
+    }
+
+    private function findTokenById(string $tokenId): ?array
+    {
+        $tokens = $this->tokenDataProvider->getTokens();
+
+        foreach ($tokens as $token) {
+            if ($token['token'] === $tokenId) {
+                return $token;
+            }
+        }
+
+        return null;
+    }
+
+    private function checkPermission(array $token, string $permission): bool
+    {
+        return in_array($permission, $token['permissions'] ?? [], true);
     }
 }
