@@ -6,6 +6,10 @@ namespace Test\Handler;
 
 use App\Handler\PermissionHandler;
 use App\Provider\TokenDataProvider;
+use App\Repository\TokenRepository;
+use App\Request\QueryParameterExtractor;
+use App\Service\PermissionChecker;
+use App\Validator\TokenParameterValidator;
 use PHPUnit\Framework\TestCase;
 use ProgPhil1337\SimpleReactApp\HTTP\Response\JSONResponse;
 use ProgPhil1337\SimpleReactApp\HTTP\Routing\RouteParameters;
@@ -19,7 +23,17 @@ class PermissionHandlerTest extends TestCase
     protected function setUp(): void
     {
         $tokenDataProvider = new TokenDataProvider();
-        $this->handler = new PermissionHandler($tokenDataProvider);
+        $tokenRepository = new TokenRepository($tokenDataProvider);
+        $queryParameterExtractor = new QueryParameterExtractor();
+        $permissionChecker = new PermissionChecker();
+        $validator = new TokenParameterValidator();
+        
+        $this->handler = new PermissionHandler(
+            $validator,
+            $tokenRepository,
+            $queryParameterExtractor,
+            $permissionChecker
+        );
         $this->serverRequest = $this->createMock(ServerRequestInterface::class);
     }
 
